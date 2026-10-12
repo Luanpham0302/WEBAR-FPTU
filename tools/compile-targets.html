@@ -1,0 +1,125 @@
+<!doctype html>
+<!--
+  Dev-only tool. Compiles the PoC trigger images into one MindAR target file
+  with the same MindAR version the app runs.
+
+  Source images: tools/trigger-sources/ (kept out of public/ so they never ship).
+
+  Usage: npm run dev, then open https://localhost:5173/tools/compile-targets.html
+  Save the download as public/targets/targets-poc.mind, then run
+  node tools/inspect-targets.mjs public/targets/targets-poc.mind
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Compile MindAR targets</title>
+    <style>
+      body { margin: 24px; overflow: auto; font: 14px/1.5 system-ui, sans-serif; }
+      table { border-collapse: collapse; margin: 16px 0; }
+      td, th { border: 1px solid #999; padding: 4px 10px; text-align: left; }
+      img { height: 64px; display: block; }
+    </style>
+  </head>
+  <body>
+    <h1>Compile MindAR targets</h1>
+    <p>The array order below is the targetIndex order. Do not reorder it.</p>
+    <table>
+      <thead>
+        <tr><th>targetIndex</th><th>Image</th><th>File</th><th>Size</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <button id="compile" type="button">Compile</button>
+    <p id="status">Loading compiler... If this does not change, restart npm run dev.</p>
+    <p><a id="download" hidden download="targets-poc.mind">Download targets-poc.mind</a></p>
+
+    <script type="module">
+      import { Compiler } from 'mind-ar/dist/mindar-image.prod.js';
+
+      // Index in this array = targetIndex in the compiled file.
+      const TRIGGERS = [
+        '/tools/trigger-sources/0-artwork-a.png',
+        '/tools/trigger-sources/1-artwork-b.png',
+        '/tools/trigger-sources/2-artwork-c.png',
+        '/tools/trigger-sources/3-artwork-d.png',
+        '/tools/trigger-sources/4-artwork-e.png',
+      ];
+
+      const params = new URLSearchParams(window.location.search);
+      const status = document.getElementById('status');
+      const rows = document.getElementById('rows');
+      const button = document.getElementById('compile');
+      const download = document.getElementById('download');
+
+      const loadImage = (src) =>
+        new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = () => reject(new Error(`Could not load ${src}`));
+          image.src = src;
+        });
+
+      const compile = async () => {
+        button.disabled = true;
+
+        try {
+          status.textContent = 'Loading images...';
+          const images = [];
+
+          // Sequential on purpose: the order must match TRIGGERS exactly.
+          for (const src of TRIGGERS) {
+            images.push(await loadImage(src));
+          }
+
+          rows.replaceChildren(
+            ...images.map((image, index) => {
+              const row = document.createElement('tr');
+              const cells = [index, null, TRIGGERS[index], `${image.width}x${image.height}`];
+              cells.forEach((value) => {
+                const cell = document.createElement('td');
+                if (value === null) {
+                  const thumbnail = image.cloneNode();
+                  cell.append(thumbnail);
+                } else {
+                  cell.textContent = value;
+                }
+                row.append(cell);
+              });
+              return row;
+            }),
+          );
+
+          const compiler = new Compiler();
+          await compiler.compileImageTargets(images, (percent) => {
+            status.textContent = `Compiling... ${percent.toFixed(0)}%`;
+          });
+
+          const buffer = compiler.exportData();
+          const blob = new Blob([buffer], { type: 'application/octet-stream' });
+          download.href = URL.createObjectURL(blob);
+          download.hidden = false;
+
+          // Optional: ?post=<url> also sends the file to a local receiver.
+          const postUrl = params.get('post');
+          if (postUrl) {
+            await fetch(postUrl, { method: 'POST', body: blob });
+          }
+
+          status.textContent = `Done: ${images.length} targets, ${buffer.byteLength} bytes.`;
+        } catch (error) {
+          console.error(error);
+          status.textContent = `Failed: ${error instanceof Error ? error.message : error}`;
+        } finally {
+          button.disabled = false;
+        }
+      };
+
+      status.textContent = 'Ready.';
+      button.addEventListener('click', compile);
+
+      if (params.has('auto')) {
+        void compile();
+      }
+    </script>
+  </body>
+</html>

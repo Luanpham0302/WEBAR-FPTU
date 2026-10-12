@@ -16,3 +16,7 @@ vite-dev*.log
 Thumbs.db
 
 .vercel
+
+# Local source exports (duplicate of the repo)
+source-code-only/
+source-code-only.zip

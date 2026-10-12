@@ -275,6 +275,19 @@ button {
   margin: 0 auto 18px;
   object-fit: contain;
   background: #000;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.boot-splash__animation::-webkit-media-controls,
+.boot-splash__animation::-webkit-media-controls-enclosure,
+.boot-splash__animation::-webkit-media-controls-panel,
+.boot-splash__animation::-webkit-media-controls-play-button,
+.boot-splash__animation::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .boot-splash__title {
@@ -335,6 +348,102 @@ button {
 
 .boot-splash__hearts {
   display: none;
+}
+
+/* ── Artwork loading / non-fatal layer error ── */
+
+.ar-layer-hint {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
+  z-index: 10000;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  border: var(--px-border) solid var(--color-ink);
+  box-shadow: var(--px-shadow-sm);
+  background: var(--color-panel);
+  color: var(--color-ink);
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  line-height: 1.6;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.ar-layer-hint--error,
+.ar-layer-hint--partial {
+  background: var(--color-pink);
+}
+
+/* Sound on/off */
+
+.ar-sound-toggle {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  right: 14px;
+  z-index: 10000;
+  min-height: 40px;
+  padding: 10px 12px;
+  border: var(--px-border) solid var(--color-ink);
+  box-shadow: var(--px-shadow-sm);
+  background: var(--color-panel);
+  color: var(--color-ink);
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+  line-height: 1.4;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ar-sound-toggle--on {
+  background: var(--color-mint);
+}
+
+/* ── Startup / camera error ── */
+
+.ar-error {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #000;
+}
+
+.ar-error__window {
+  width: min(90vw, 360px);
+  padding: 20px 18px;
+  border: var(--px-border) solid var(--color-ink);
+  box-shadow: var(--px-shadow);
+  background: var(--color-panel);
+  color: var(--color-ink);
+  text-align: center;
+}
+
+.ar-error__title {
+  margin: 0 0 14px;
+  font-family: var(--font-pixel);
+  font-size: 0.7rem;
+  line-height: 1.6;
+}
+
+.ar-error__message {
+  margin: 0 0 18px;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.ar-error__retry {
+  padding: 12px 18px;
+  border: var(--px-border) solid var(--color-ink);
+  box-shadow: var(--px-shadow-sm);
+  background: var(--color-yellow);
+  color: var(--color-ink);
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  cursor: pointer;
 }
 
 @keyframes boot-bar {

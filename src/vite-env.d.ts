@@ -20,6 +20,8 @@ declare module 'mind-ar/dist/mindar-image-three.prod.js' {
     renderer: WebGLRenderer;
     scene: Scene;
     camera: PerspectiveCamera;
+    // Created by start(); internal to MindAR.
+    controller: unknown;
 
     addAnchor(targetIndex: number): {
       group: Group;

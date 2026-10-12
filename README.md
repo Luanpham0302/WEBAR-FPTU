@@ -1,115 +1,121 @@
 # Web AR Shirt
 
-A web AR app built with React, Vite, Three.js, and MindAR. It detects a printed shirt graphic and plays an animation/video overlay through the device camera.
+A web AR app built with React, Vite, Three.js, and MindAR. It recognises printed trigger images through the device camera and plays a video or 3D model on top of each one, all in a single camera session.
 
 ## Features
 
 - Auto-start camera scan on load (pixel anime game UI).
-- MindAR target detection from `.mind` files.
-- Video or 3D animation overlay on the shirt graphic.
+- Several trigger images in one MindAR `.mind` file; the user moves from one to the next without reloading.
+- Video layers (normal or alpha-packed transparent video) and GLB 3D model layers.
+- Media loads only when its trigger is recognised. A broken media file shows a hint and never stops the scanner.
+- Sound on/off control for videos that have a soundtrack.
+- Admin page (`/admin`) for scanner UI assets and the legacy videos, backed by Supabase.
 - Local HTTPS dev server for camera access.
 
 ## Stack
 
-- React 19
-- Vite 7
-- TypeScript
-- MindAR
-- Three.js
-- Vite basic SSL plugin
+- React 19, Vite 7, TypeScript
+- MindAR 1.2.5, Three.js 0.150.1
+- Supabase (Auth, Storage, one config table)
 
 ## Requirements
 
 - Node.js 20+ recommended
 - npm
+- `.env.local` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (never commit this file)
 - A device with a camera for real AR testing
-- A browser with WebGL and camera API support
 
-## Install
+## Install and run
 
 ```bash
 npm install
+npm run dev      # HTTPS dev server, e.g. https://localhost:5173
+npm run build    # production build into dist/
+npm run preview  # preview the production build
 ```
 
-## Dev
+For phone testing, use the LAN URL from Vite. Camera access requires HTTPS or localhost.
+
+## URLs and profiles
+
+A profile is one target file plus the content for each trigger in it. The profile is chosen from the URL.
+
+| URL | Profile | Target file |
+| --- | --- | --- |
+| `/` | `legacy` (default, production) | `public/targets/targets.mind` |
+| `/?profile=poc` | `poc` (technical PoC) | `public/targets/targets-poc.mind` |
+| `/admin` | Admin page | - |
+
+Profiles are defined in `src/config/arProfiles.ts`. The default is `legacy`; changing it is a deliberate one-line change in `selectProfile()`.
+
+### Legacy profile
+
+Three shirt targets, each with one alpha-packed video. Settings live in `src/ar/arAssets.ts`. Videos published from `/admin` replace these three videos (legacy profile only).
+
+### PoC profile
+
+Five triggers, five videos and one GLB in one camera session.
+
+| targetIndex | Artwork | Content |
+| --- | --- | --- |
+| 0 | Artwork A | Video 01, alpha-packed |
+| 1 | Artwork B | Video 02, alpha-packed |
+| 2 | Artwork C | Video 03, alpha-packed |
+| 3 | Artwork D | Video 04, normal |
+| 4 | Artwork E | Video 05, normal + GLB model |
+
+Video 04, Video 05 and the GLB in `public/poc/media/` are development placeholders. Replace the files, or change the paths in `src/config/arProfiles.ts`, to use real assets.
+
+## Layers
+
+Each artwork has one or more layers:
+
+- `VIDEO` with `videoMode: 'normal'` or `'alpha-packed'` (colour in the left half of the frame, alpha in the right half).
+- `MODEL_3D`: a GLB file, anchored to the trigger image.
+
+Position, scale and rotation are in trigger-image units: 1 unit is the trigger's width, and +z points out of the image toward the viewer.
+
+Memory: the current artwork plus `MAX_PAUSED_ARTWORKS` older ones (default 1) stay loaded; the rest are freed. Set it to 0 in `src/config/arProfiles.ts` if a device runs short of memory.
+
+## Compiling trigger images
+
+`targetIndex` is the position of the image in the list that was compiled, so the order must never change by accident.
+
+1. Put the source images in `tools/trigger-sources/`. They are compile-time files and are deliberately outside `public/`, so they are not shipped.
+2. List them, in targetIndex order, in the `TRIGGERS` array in `tools/compile-targets.html`.
+3. Run `npm run dev` and open `https://localhost:5173/tools/compile-targets.html`, then press Compile.
+4. Save the download as `public/targets/targets-poc.mind`.
+5. Check the result:
 
 ```bash
-npm run dev
+node tools/inspect-targets.mjs public/targets/targets-poc.mind
 ```
 
-Vite runs a local HTTPS server. Open the URL shown in the terminal, e.g.:
+It prints the target count, each target's size and its feature counts. Put the sizes into the profile (`targetWidth` / `targetHeight`).
 
-```text
-https://localhost:5173
-```
-
-For phone testing, use the LAN URL from Vite. Camera access usually requires HTTPS or localhost.
-
-## Production build
-
-```bash
-npm run build
-```
-
-Output is in `dist/`.
-
-## Preview build
-
-```bash
-npm run preview
-```
+Trigger images should have dense, high-contrast, non-repeating detail and should not share elements (borders, logos, lettering) with each other. MindAR works in greyscale, so different colours alone do not make two images distinct.
 
 ## Project structure
 
 ```text
 public/
-  animations/        Video or animation used as AR overlay
+  animations/        Legacy videos and the loading animation
+  poc/media/         PoC placeholder videos and GLB
   targets/           MindAR .mind target files
+  ui/                Scanner overlay images
 src/
-  ar/                MindAR and Three.js components
-  config/            AR target configuration
-  pages/             App screens
+  ar/                MindAR viewer, artwork manager, video and model layers
+  config/            Profiles and tracking settings
+  lib/               Supabase client and content service
+  pages/             Scan page and admin page
   styles/            Global CSS
+tools/
+  compile-targets.html   Dev-only target compiler page
+  inspect-targets.mjs    Prints the contents of a .mind file
+  trigger-sources/       Source images for the PoC triggers
 ```
-
-## AR target config
-
-Main config file:
-
-```text
-src/config/arTargets.ts
-```
-
-Example target:
-
-```ts
-{
-  id: 'shirt-01',
-  targetSrc: '/targets/shirt-01.mind',
-  animationSrc: '/animations/shirt-01.mp4',
-  animationType: 'video',
-  targetIndex: 0,
-  overlayWidth: 1,
-  overlayHeight: 1.25
-}
-```
-
-To change the marker or animation:
-
-1. Add a `.mind` file to `public/targets/`.
-2. Add a video or animation to `public/animations/`.
-3. Update `src/config/arTargets.ts`.
 
 ## Notes
 
-- Do not commit `node_modules/` or `dist/`.
-- `.mind` files must be generated from the marker image using MindAR tools.
-- If the camera does not open, check browser permissions and ensure the app runs on HTTPS.
-
-## Scripts
-
-```bash
-npm run dev      # start dev server
-npm run build    # production build
-npm run preview  # preview production build
-```
+- Do not commit `node_modules/`, `dist/` or `.env.local`.
+- If the camera does not open, check browser permissions and that the app runs on HTTPS.
