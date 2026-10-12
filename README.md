@@ -54,7 +54,7 @@ Three shirt targets, each with one alpha-packed video. Settings live in `src/ar/
 
 ### PoC profile
 
-Five triggers, five videos and one GLB in one camera session.
+Six triggers, six videos and one GLB in one camera session.
 
 | targetIndex | Artwork | Content |
 | --- | --- | --- |
@@ -63,6 +63,7 @@ Five triggers, five videos and one GLB in one camera session.
 | 2 | Artwork C | Video 03, alpha-packed |
 | 3 | Artwork D | Video 04, normal |
 | 4 | Artwork E | Video 05, normal + GLB model |
+| 5 | Coc AI | Video 06, normal |
 
 Video 04, Video 05 and the GLB in `public/poc/media/` are development placeholders. Replace the files, or change the paths in `src/config/arProfiles.ts`, to use real assets.
 

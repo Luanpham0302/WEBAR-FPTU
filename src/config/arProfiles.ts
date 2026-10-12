@@ -32,21 +32,28 @@ export const legacyProfile: ARProfile = {
   })),
 };
 
-// Technical PoC: five triggers in one camera session. Selected with
+// Technical PoC: six triggers in one camera session. Selected with
 // ?profile=poc. Video 04, Video 05 and the GLB are development placeholders;
 // replace the files (or these paths) with real assets.
 const POC_TRIGGER_SIZE = 1254;
+
+// Size of 5-coc-ai.jpg as embedded in the .mind file.
+const COC_AI_TRIGGER_SIZE: [number, number] = [745, 708];
 
 const pocArtwork = (
   targetIndex: number,
   name: string,
   layers: Artwork['layers'],
+  [targetWidth, targetHeight]: [number, number] = [
+    POC_TRIGGER_SIZE,
+    POC_TRIGGER_SIZE,
+  ],
 ): Artwork => ({
   id: `poc-${targetIndex}`,
   name,
   targetIndex,
-  targetWidth: POC_TRIGGER_SIZE,
-  targetHeight: POC_TRIGGER_SIZE,
+  targetWidth,
+  targetHeight,
   layers,
 });
 
@@ -92,6 +99,12 @@ export const pocProfile: ARProfile = {
         rotation: [90, 0, 0],
       },
     ]),
+    pocArtwork(
+      5,
+      'Coc AI',
+      [pocVideo('/poc/media/video-06-coc-ai.mp4', 'normal')],
+      COC_AI_TRIGGER_SIZE,
+    ),
   ],
 };
 
