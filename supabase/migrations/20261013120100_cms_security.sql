@@ -1,4 +1,4 @@
--- Phase 2A, file 2 of 3: role helpers, triggers and row level security.
+-- Phase 2A, file 2 of 4: role helpers, triggers and row level security.
 --
 -- Requires file 1. Does not touch ar_content or its policies.
 

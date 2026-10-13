@@ -72,7 +72,7 @@ Video 04, Video 05 and the GLB in `public/poc/media/` are development placeholde
 
 `/admin` has five sections: Dashboard, Campaigns, Artworks, Media Library and Scanner Settings. Campaigns, artworks and media are working copies; the scanner still runs the built-in profiles until target packs and releases exist.
 
-- **Database.** SQL lives in `supabase/migrations/` and is applied by hand, in file-name order. `supabase/manual/` holds a read-only audit query and the script that creates the first Admin.
+- **Database.** SQL lives in `supabase/migrations/` and is applied by hand, in file-name order. Files 1-3 only add new objects. File 4 (`cms_hardening`) restricts the existing `ar_content` table and `ar-assets` bucket to CMS roles; create the first Admin and deploy the frontend before applying it. `supabase/manual/` holds the audit and preview queries, the first-Admin script and a rollback for file 4.
 - **Roles.** `viewer` reads, `editor` edits working copies, `admin` also publishes. A user without a row in `user_roles` has no CMS access. Row level security enforces this; the UI only hides buttons.
 - **Storage.** All file access goes through the `StorageAdapter` in `src/cms/storage/`. Stored files are never overwritten: every path contains the SHA-256 of the file.
 

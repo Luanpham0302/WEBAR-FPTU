@@ -1,4 +1,4 @@
--- Phase 2A, file 1 of 3: CMS tables, constraints and indexes.
+-- Phase 2A, file 1 of 4: CMS tables, constraints and indexes.
 --
 -- Does not touch ar_content, the ar-assets bucket or any existing policy.
 -- Status-like columns are text + CHECK rather than Postgres enums, so a new

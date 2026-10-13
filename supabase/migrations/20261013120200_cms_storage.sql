@@ -1,4 +1,4 @@
--- Phase 2A, file 3 of 3: storage buckets and storage policies for the CMS.
+-- Phase 2A, file 3 of 4: storage buckets and storage policies for the CMS.
 --
 -- Requires file 2. Creates two NEW buckets. The existing ar-assets bucket and
 -- its policies are not touched.

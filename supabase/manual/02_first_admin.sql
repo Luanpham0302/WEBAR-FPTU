@@ -1,4 +1,5 @@
--- Run once in the Supabase SQL editor, AFTER the three migrations.
+-- Run once in the Supabase SQL editor, AFTER migration files 1-3 and BEFORE
+-- file 4 (cms_hardening), which refuses to run until an Admin exists.
 -- Replace the email with the account that should be the first Admin.
 -- The SQL editor bypasses row level security, which is the only way to
 -- create the first Admin: nobody can grant a role to themselves in the app.
