@@ -70,46 +70,5 @@ export async function getARContent(): Promise<ARContentConfig> {
   return (await loadARContent()).config;
 }
 
-export async function saveARContent(
-  config: ARContentConfig,
-) {
-  const { error } = await supabase
-    .from('ar_content')
-    .upsert({
-      id: 'main',
-      config,
-      updated_at: new Date().toISOString(),
-    });
-
-  if (error) {
-    throw error;
-  }
-}
-
-export async function uploadARAsset(
-  key: keyof ARContentConfig,
-  file: File,
-) {
-  const extension =
-    file.name.split('.').pop()?.toLowerCase() || 'bin';
-
-  const path = `live/${key}.${extension}`;
-
-  const { error } = await supabase.storage
-    .from('ar-assets')
-    .upload(path, file, {
-      upsert: true,
-      contentType: file.type || undefined,
-      cacheControl: '60',
-    });
-
-  if (error) {
-    throw error;
-  }
-
-  const { data } = supabase.storage
-    .from('ar-assets')
-    .getPublicUrl(path);
-
-  return `${data.publicUrl}?v=${Date.now()}`;
-}
+// Writing the config and uploading assets are admin-only and live in
+// src/cms/scannerSettingsService.ts, so the scanner bundle carries neither.

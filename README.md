@@ -9,14 +9,14 @@ A web AR app built with React, Vite, Three.js, and MindAR. It recognises printed
 - Video layers (normal or alpha-packed transparent video) and GLB 3D model layers.
 - Media loads only when its trigger is recognised. A broken media file shows a hint and never stops the scanner.
 - Sound on/off control for videos that have a soundtrack.
-- Admin page (`/admin`) for scanner UI assets and the legacy videos, backed by Supabase.
+- Admin CMS (`/admin`): campaigns, artworks, media library and scanner settings, backed by Supabase. Loaded as a separate chunk.
 - Local HTTPS dev server for camera access.
 
 ## Stack
 
 - React 19, Vite 7, TypeScript
 - MindAR 1.2.5, Three.js 0.150.1
-- Supabase (Auth, Storage, one config table)
+- Supabase (Auth, Storage, Postgres with row level security)
 
 ## Requirements
 
@@ -32,6 +32,7 @@ npm install
 npm run dev      # HTTPS dev server, e.g. https://localhost:5173
 npm run build    # production build into dist/
 npm run preview  # preview the production build
+npm test         # unit tests for the CMS helpers (Node 24, no framework)
 ```
 
 For phone testing, use the LAN URL from Vite. Camera access requires HTTPS or localhost.
@@ -66,6 +67,23 @@ Six triggers, six videos and one GLB in one camera session.
 | 5 | Coc AI | Video 06, normal |
 
 Video 04, Video 05 and the GLB in `public/poc/media/` are development placeholders. Replace the files, or change the paths in `src/config/arProfiles.ts`, to use real assets.
+
+## Admin CMS (Phase 2A)
+
+`/admin` has five sections: Dashboard, Campaigns, Artworks, Media Library and Scanner Settings. Campaigns, artworks and media are working copies; the scanner still runs the built-in profiles until target packs and releases exist.
+
+- **Database.** SQL lives in `supabase/migrations/` and is applied by hand, in file-name order. `supabase/manual/` holds a read-only audit query and the script that creates the first Admin.
+- **Roles.** `viewer` reads, `editor` edits working copies, `admin` also publishes. A user without a row in `user_roles` has no CMS access. Row level security enforces this; the UI only hides buttons.
+- **Storage.** All file access goes through the `StorageAdapter` in `src/cms/storage/`. Stored files are never overwritten: every path contains the SHA-256 of the file.
+
+| Bucket | Access | Path |
+| --- | --- | --- |
+| `ar-media` | public | `media/{media-id}/{sha256}.{ext}` |
+| `ar-sources` | private | `triggers/{campaign-id}/{artwork-id}/{sha256}.{ext}` |
+| `ar-assets` | public, existing | `scanner/{asset-key}/{sha256}.{ext}` |
+
+- **Scanner Settings.** An upload goes to a new file and only changes the preview. The live scanner changes when Publish writes the new URL to `ar_content`.
+- **Release manifest.** `src/cms/manifest.ts` defines the immutable snapshot a release stores, and converts it to the runtime `ARProfile`. The scanner does not use it yet.
 
 ## Layers
 
@@ -107,9 +125,15 @@ public/
 src/
   ar/                MindAR viewer, artwork manager, video and model layers
   config/            Profiles and tracking settings
+  admin/             Admin shell and sections (lazy chunk)
+  cms/               CMS services, storage adapter, release manifest
   lib/               Supabase client and content service
-  pages/             Scan page and admin page
+  pages/             Scan page and admin entry point
   styles/            Global CSS
+supabase/
+  migrations/        CMS schema, security and storage SQL
+  manual/            Audit query and first-Admin script
+tests/               Unit tests
 tools/
   compile-targets.html   Dev-only target compiler page
   inspect-targets.mjs    Prints the contents of a .mind file
