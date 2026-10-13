@@ -1,6 +1,6 @@
 import {
   DEFAULT_AR_CONTENT,
-  getARContent,
+  loadARContent,
   type ARContentConfig,
 } from '../lib/contentService';
 import { useEffect, useRef, useState } from 'react';
@@ -23,6 +23,10 @@ const LAYER_HINT_TEXT: Record<ActiveArtworkPhase, string | null> = {
 };
 
 type ARStatus = 'starting' | 'scanning' | 'found' | 'lost' | 'error';
+
+// 'loading': the published content config has not arrived yet.
+// 'error': it could not be read; built-in defaults are in use.
+type ConfigStatus = 'loading' | 'ready' | 'error';
 
 type ARStartupError = {
   title: string;
@@ -93,12 +97,18 @@ export default function MindARViewer() {
   const [contentConfig, setContentConfig] =
     useState<ARContentConfig>(DEFAULT_AR_CONTENT);
   const [layerHint, setLayerHint] = useState<ActiveArtworkPhase | null>(null);
+  const [configStatus, setConfigStatus] = useState<ConfigStatus>('loading');
+  const [loadingVideoFailed, setLoadingVideoFailed] = useState(false);
+
+  // The loading video is the published one, so it is only known once the
+  // config has arrived. Until then, and if the config or the video fails,
+  // the splash shows no video at all rather than a built-in one.
+  const loadingVideoSrc =
+    isLoading && configStatus === 'ready' && !loadingVideoFailed
+      ? contentConfig.loadingAnimation || null
+      : null;
 
   useEffect(() => {
-    if (!isLoading) {
-      return;
-    }
-
     const loadingVideo = loadingVideoRef.current;
 
     if (!loadingVideo) {
@@ -137,8 +147,13 @@ export default function MindARViewer() {
       window.removeEventListener('pointerdown', playLoadingVideo);
       window.removeEventListener('touchstart', playLoadingVideo);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+      // The splash is going away: stop the video and free its decoder.
+      loadingVideo.pause();
+      loadingVideo.removeAttribute('src');
+      loadingVideo.load();
     };
-  }, [isLoading]);
+  }, [loadingVideoSrc]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -191,13 +206,15 @@ export default function MindARViewer() {
         setStartupError(null);
         setStatus('starting');
 
-        const remoteContent = await getARContent();
+        const { config: remoteContent, status: remoteStatus } =
+          await loadARContent();
 
         if (!isMounted) {
           return;
         }
 
         setContentConfig(remoteContent);
+        setConfigStatus(remoteStatus);
 
         // Only the legacy videos are managed through the published ar_content.
         const activeProfile =
@@ -357,31 +374,26 @@ export default function MindARViewer() {
 
       {showBootSplash && (
         <div className="boot-splash" aria-hidden="true">
-          <div className="boot-splash__window">
-            <div className="boot-splash__header">
-              <span>AR SHIRT</span>
-              <span className="boot-splash__close">X</span>
-            </div>
-            <div className="boot-splash__body">
-              <video
-                ref={loadingVideoRef}
-                className="boot-splash__animation"
-                src={contentConfig.loadingAnimation}
-                autoPlay
-                controls={false}
-                loop
-                muted
-                playsInline
-                preload="auto"
-              />
-              <p className="boot-splash__title">LOADING...</p>
-              <div className="boot-splash__hearts" aria-hidden="true">
-                <span className="boot-splash__heart">♥</span>
-                <span className="boot-splash__heart">♥</span>
-                <span className="boot-splash__heart">♥</span>
-              </div>
-            </div>
-          </div>
+          {loadingVideoSrc && (
+            <video
+              key={loadingVideoSrc}
+              ref={loadingVideoRef}
+              className="boot-splash__animation"
+              src={loadingVideoSrc}
+              autoPlay
+              controls={false}
+              loop
+              muted
+              playsInline
+              preload="auto"
+              onError={() => setLoadingVideoFailed(true)}
+            />
+          )}
+          {/* Text only when there is no video to show; the video carries
+              its own. Nothing while the config is still on its way. */}
+          {!loadingVideoSrc && configStatus !== 'loading' && (
+            <p className="boot-splash__title">LOADING...</p>
+          )}
         </div>
       )}
 

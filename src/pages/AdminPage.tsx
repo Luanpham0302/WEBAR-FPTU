@@ -316,7 +316,11 @@ export default function AdminPage() {
                 marginBottom: 12,
               }}
             >
-              {isVideo(field.key) ? (
+              {!config[field.key] ? (
+                <span style={{ color: '#888' }}>
+                  Not set
+                </span>
+              ) : isVideo(field.key) ? (
                 <video
                   src={config[field.key]}
                   controls

@@ -226,54 +226,23 @@ button {
   z-index: 10000;
   display: grid;
   place-items: center;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   background: #000;
   pointer-events: none;
 }
 
-.boot-splash__window {
-  width: min(90vw, 360px);
-  border: 0;
-  box-shadow: none;
-  background: transparent;
-}
-
-.boot-splash__header {
-  display: none;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  border-bottom: var(--px-border) solid var(--color-ink);
-  background: var(--color-blue);
-  color: var(--color-white);
-  font-family: var(--font-pixel);
-  font-size: 0.55rem;
-  letter-spacing: 0.04em;
-}
-
-.boot-splash__close {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--color-ink);
-  background: var(--color-pink);
-  color: var(--color-ink);
-  font-family: var(--font-pixel);
-  font-size: 0.45rem;
-  line-height: 1;
-}
-
-.boot-splash__body {
-  padding: 0;
-  text-align: center;
-}
-
+/* Fills the whole viewport, cropping the edges if the shape differs. */
 .boot-splash__animation {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  max-height: 360px;
-  margin: 0 auto 18px;
-  object-fit: contain;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
   background: #000;
   pointer-events: none;
   -webkit-user-select: none;
@@ -290,6 +259,7 @@ button {
   pointer-events: none !important;
 }
 
+/* Fallback when there is no loading video to show. */
 .boot-splash__title {
   margin: 0;
   color: #fff;
@@ -298,56 +268,6 @@ button {
   font-size: clamp(0.7rem, 3.5vw, 0.85rem);
   line-height: 1.6;
   animation: pixel-blink 0.8s step-end infinite;
-}
-
-.boot-splash__bar,
-.boot-splash__hearts {
-  display: none;
-}
-
-.boot-splash__bar {
-  height: 18px;
-  border: var(--px-border) solid var(--color-ink);
-  background: var(--color-panel);
-  overflow: hidden;
-}
-
-.boot-splash__bar-fill {
-  height: 100%;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--color-mint) 0px,
-    var(--color-mint) 12px,
-    var(--color-yellow) 12px,
-    var(--color-yellow) 24px
-  );
-  animation: boot-bar 1.1s steps(12) forwards;
-}
-
-.boot-splash__hearts {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.boot-splash__heart {
-  font-size: 1.1rem;
-  animation: heart-bounce 0.6s ease-in-out infinite;
-}
-
-.boot-splash__heart:nth-child(2) {
-  animation-delay: 0.15s;
-  color: var(--color-pink);
-}
-
-.boot-splash__heart:nth-child(3) {
-  animation-delay: 0.3s;
-  color: var(--color-mint);
-}
-
-.boot-splash__hearts {
-  display: none;
 }
 
 /* ── Artwork loading / non-fatal layer error ── */
