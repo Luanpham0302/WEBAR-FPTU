@@ -66,6 +66,9 @@ export type LayerRuntime = {
   pause(): void;
   update(deltaSeconds: number): void;
   dispose(): void;
+  // Pinch-to-zoom: multiplies the configured scale by `factor` (1 = as
+  // configured). Only layers that support zoom (videos) implement it.
+  setZoom?(factor: number): void;
 };
 
 export type ArtworkState =

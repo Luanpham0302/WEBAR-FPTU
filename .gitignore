@@ -20,3 +20,6 @@ Thumbs.db
 # Local source exports (duplicate of the repo)
 source-code-only/
 source-code-only.zip
+
+# Local Netlify folder
+.netlify

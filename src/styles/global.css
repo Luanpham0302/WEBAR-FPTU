@@ -319,6 +319,56 @@ button {
   background: var(--color-mint);
 }
 
+/* Video zoom: -, percentage, +, RESET */
+
+.ar-zoom-controls {
+  position: fixed;
+  right: 14px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 170px);
+  z-index: 10000;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  border: var(--px-border) solid var(--color-ink);
+  box-shadow: var(--px-shadow-sm);
+  background: var(--color-panel);
+  padding: 4px;
+  touch-action: manipulation;
+}
+
+.ar-zoom-controls__button {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 2px solid var(--color-ink);
+  background: var(--color-yellow);
+  color: var(--color-ink);
+  font-family: var(--font-pixel);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.ar-zoom-controls__button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ar-zoom-controls__reset {
+  font-size: 0.45rem;
+  background: var(--color-panel);
+}
+
+.ar-zoom-controls__value {
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  color: var(--color-ink);
+  font-family: var(--font-pixel);
+  font-size: 0.5rem;
+}
+
 /* ── Startup / camera error ── */
 
 .ar-error {

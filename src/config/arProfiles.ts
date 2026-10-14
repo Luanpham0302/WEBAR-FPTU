@@ -7,6 +7,10 @@ import { arTargetConfig } from './arTargets';
 // testing shows memory pressure.
 export const MAX_PAUSED_ARTWORKS = 1;
 
+// On-screen zoom buttons (-, percentage, +, RESET) shown while a target with
+// a video is tracked. Two-finger pinch works either way.
+export const SHOW_ZOOM_CONTROLS = true;
+
 export const legacyProfile: ARProfile = {
   id: 'legacy',
   targetSrc: arTargetConfig.targetSrc,

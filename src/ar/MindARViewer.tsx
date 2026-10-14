@@ -9,11 +9,26 @@ import { MindARThree } from 'mind-ar/dist/mindar-image-three.prod.js';
 import { arTargetConfig } from '../config/arTargets';
 import {
   MAX_PAUSED_ARTWORKS,
+  SHOW_ZOOM_CONTROLS,
   applyRemoteVideoOverrides,
   selectProfile,
 } from '../config/arProfiles';
 import { ArtworkManager, type ActiveArtworkPhase } from './artworkManager';
 import { rotateMatchOrder } from './rotateMatchOrder';
+import type { Artwork } from './types';
+import { ZOOM_MAX, ZOOM_MIN, touchDistance, zoomPercent } from './zoom';
+
+// Zoom applies to video layers; an artwork with none shows no zoom controls.
+const hasVideoLayer = (artwork: Artwork) =>
+  artwork.layers.some((layer) => layer.type === 'VIDEO');
+
+const fingerDistance = (a: Touch, b: Touch) =>
+  touchDistance({ x: a.clientX, y: a.clientY }, { x: b.clientX, y: b.clientY });
+
+// A touch on a button (sound, zoom, retry) is a tap on that button, never
+// the start of a pinch.
+const isOnControl = (touch: Touch) =>
+  touch.target instanceof Element && touch.target.closest('button') !== null;
 
 const LAYER_HINT_TEXT: Record<ActiveArtworkPhase, string | null> = {
   loading: 'LOADING...',
@@ -84,8 +99,12 @@ async function assertAssetExists(src: string, label: string) {
 
 export default function MindARViewer() {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const loadingVideoRef = useRef<HTMLVideoElement | null>(null);
   const artworkManagerRef = useRef<ArtworkManager | null>(null);
+  // Zoom of the tracked artwork in percent; null when there is nothing to
+  // zoom (no target tracked, or the tracked artwork has no video).
+  const [zoomUi, setZoomUi] = useState<number | null>(null);
   const [profile] = useState(() => selectProfile(window.location.search));
   const [soundOn, setSoundOn] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
@@ -162,6 +181,8 @@ export default function MindARViewer() {
 
     let isMounted = true;
     let mindarThree: MindARThree | null = null;
+    // Whether the tracked artwork has a video that a pinch can zoom.
+    let canZoom = false;
 
     const artworkManager = new ArtworkManager({
       maxPaused: MAX_PAUSED_ARTWORKS,
@@ -172,6 +193,10 @@ export default function MindARViewer() {
 
         setLayerHint(info?.phase ?? null);
         setStatus(info ? 'found' : 'lost');
+
+        canZoom = info !== null && hasVideoLayer(info.artwork);
+        const factor = artworkManager.zoom.current();
+        setZoomUi(canZoom && factor !== null ? zoomPercent(factor) : null);
       },
       onSoundBlocked: () => {
         if (isMounted) {
@@ -199,6 +224,76 @@ export default function MindARViewer() {
     window.addEventListener('pointerup', unlockSound, { passive: true });
     window.addEventListener('touchend', unlockSound, { passive: true });
     document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // ---- Pinch-to-zoom of the tracked artwork's video.
+    // Two fingers on the camera view scale the video; the page itself must
+    // never zoom or scroll. CSS touch-action: none covers Android Chrome;
+    // iOS Safari also needs touchmove and its own gesture events cancelled.
+    const shell = shellRef.current;
+    let zoomFrame = 0;
+
+    // At most one React update per frame while the fingers move.
+    const showZoom = () => {
+      if (zoomFrame) {
+        return;
+      }
+
+      zoomFrame = window.requestAnimationFrame(() => {
+        zoomFrame = 0;
+        const factor = artworkManager.zoom.current();
+
+        if (isMounted && canZoom && factor !== null) {
+          setZoomUi(zoomPercent(factor));
+        }
+      });
+    };
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 2) {
+        // A third finger, or back to one: stop zooming.
+        artworkManager.zoom.pinchEnd();
+        return;
+      }
+
+      const [a, b] = [event.touches[0], event.touches[1]];
+
+      if (canZoom && !isOnControl(a) && !isOnControl(b)) {
+        artworkManager.zoom.pinchStart(fingerDistance(a, b));
+      }
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (event.touches.length < 2) {
+        return;
+      }
+
+      // Never let two fingers zoom or scroll the page in the scanner.
+      event.preventDefault();
+
+      if (artworkManager.zoom.pinching) {
+        artworkManager.zoom.pinchMove(
+          fingerDistance(event.touches[0], event.touches[1]),
+        );
+        showZoom();
+      }
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length < 2) {
+        artworkManager.zoom.pinchEnd();
+      }
+    };
+
+    const preventPageGesture = (event: Event) => event.preventDefault();
+
+    shell?.addEventListener('touchstart', handleTouchStart, { passive: true });
+    shell?.addEventListener('touchmove', handleTouchMove, { passive: false });
+    shell?.addEventListener('touchend', handleTouchEnd, { passive: true });
+    shell?.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+    // Safari-only pinch events; cancelling them stops page zoom on iOS.
+    document.addEventListener('gesturestart', preventPageGesture, { passive: false });
+    document.addEventListener('gesturechange', preventPageGesture, { passive: false });
+    document.addEventListener('gestureend', preventPageGesture, { passive: false });
 
     const startAR = async () => {
       try {
@@ -305,6 +400,14 @@ export default function MindARViewer() {
       window.removeEventListener('pointerup', unlockSound);
       window.removeEventListener('touchend', unlockSound);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      shell?.removeEventListener('touchstart', handleTouchStart);
+      shell?.removeEventListener('touchmove', handleTouchMove);
+      shell?.removeEventListener('touchend', handleTouchEnd);
+      shell?.removeEventListener('touchcancel', handleTouchEnd);
+      document.removeEventListener('gesturestart', preventPageGesture);
+      document.removeEventListener('gesturechange', preventPageGesture);
+      document.removeEventListener('gestureend', preventPageGesture);
+      window.cancelAnimationFrame(zoomFrame);
       artworkManagerRef.current = null;
 
       if (mindarThree) {
@@ -332,6 +435,25 @@ export default function MindARViewer() {
     setSoundBlocked(false);
   };
 
+  // The + / - / RESET buttons. Same zoom state as the pinch.
+  const changeZoom = (action: 'in' | 'out' | 'reset') => {
+    const zoom = artworkManagerRef.current?.zoom;
+
+    if (!zoom) {
+      return;
+    }
+
+    const factor =
+      action === 'reset' ? zoom.reset() : zoom.step(action === 'in' ? 1 : -1);
+
+    if (factor !== null) {
+      setZoomUi(zoomPercent(factor));
+    }
+  };
+
+  const showZoomControls =
+    SHOW_ZOOM_CONTROLS && zoomUi !== null && !isLoading && !startupError;
+
   let soundLabel = 'SOUND OFF';
 
   if (soundOn) {
@@ -339,7 +461,7 @@ export default function MindARViewer() {
   }
 
   return (
-    <div className="ar-shell">
+    <div ref={shellRef} className="ar-shell">
       <div
         id="custom-scanning-overlay"
         className="scanner-overlay"
@@ -415,6 +537,41 @@ export default function MindARViewer() {
         >
           {soundLabel}
         </button>
+      )}
+
+      {showZoomControls && (
+        <div className="ar-zoom-controls" role="group" aria-label="Video zoom">
+          <button
+            className="ar-zoom-controls__button"
+            type="button"
+            aria-label="Zoom out"
+            disabled={zoomUi <= Math.round(ZOOM_MIN * 100)}
+            onClick={() => changeZoom('out')}
+          >
+            -
+          </button>
+          <span className="ar-zoom-controls__value" aria-live="polite">
+            {zoomUi}%
+          </span>
+          <button
+            className="ar-zoom-controls__button"
+            type="button"
+            aria-label="Zoom in"
+            disabled={zoomUi >= Math.round(ZOOM_MAX * 100)}
+            onClick={() => changeZoom('in')}
+          >
+            +
+          </button>
+          <button
+            className="ar-zoom-controls__button ar-zoom-controls__reset"
+            type="button"
+            aria-label="Reset zoom"
+            disabled={zoomUi === 100}
+            onClick={() => changeZoom('reset')}
+          >
+            RESET
+          </button>
+        </div>
       )}
 
       {startupError && (

@@ -5,6 +5,7 @@ import type {
   LayerRuntime,
   VideoLayerConfig,
 } from './types';
+import { zoomedScale } from './zoom';
 
 const VIDEO_PRELOAD_TIMEOUT_MS = 8000;
 
@@ -186,6 +187,11 @@ export async function createVideoLayer(
       video.pause();
     },
     update() {},
+    // Scales the video plane uniformly around its own centre. Position,
+    // rotation and aspect ratio stay as configured.
+    setZoom(factor) {
+      mesh.scale.setScalar(zoomedScale(config.scale, factor));
+    },
     dispose() {
       releaseVideo(video);
       mesh.removeFromParent();

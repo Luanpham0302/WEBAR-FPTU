@@ -8,6 +8,7 @@ import type {
   LayerRuntime,
 } from './types';
 import { createVideoLayer } from './videoLayer';
+import { ArtworkZoom } from './zoom';
 
 // 'partial': some layers of the artwork failed, the rest are showing.
 // 'error': nothing could be loaded for the artwork.
@@ -59,6 +60,13 @@ export class ArtworkManager {
   private soundEnabled = false;
   private disposed = false;
 
+  // Pinch-to-zoom state for this camera session, one factor per artwork.
+  // The viewer drives it; this class keeps it pointed at the tracked
+  // artwork and re-applies it whenever an artwork's layers are (re)loaded.
+  readonly zoom = new ArtworkZoom((artworkId, factor) =>
+    this.applyZoom(artworkId, factor),
+  );
+
   constructor(options: ArtworkManagerOptions) {
     this.maxPaused = Math.max(0, options.maxPaused);
     this.onActiveChange = options.onActiveChange;
@@ -90,6 +98,7 @@ export class ArtworkManager {
     // MindAR can report the next target as found a few frames before it
     // reports the previous one as lost, so the latest found target wins.
     this.activeTargetIndex = targetIndex;
+    this.zoom.setActive(entry.artwork.id);
     entry.lastUsed = ++this.useCounter;
 
     this.entries.forEach((other) => {
@@ -121,6 +130,8 @@ export class ArtworkManager {
 
     if (this.activeTargetIndex === targetIndex) {
       this.activeTargetIndex = null;
+      // The factor itself is kept for when the target is found again.
+      this.zoom.setActive(null);
       this.notify();
     }
   }
@@ -144,6 +155,7 @@ export class ArtworkManager {
   dispose() {
     this.disposed = true;
     this.activeTargetIndex = null;
+    this.zoom.setActive(null);
     this.entries.forEach((entry) => this.disposeEntry(entry));
   }
 
@@ -190,6 +202,11 @@ export class ArtworkManager {
     }
 
     entry.layers = layers;
+
+    // An artwork freed by the memory policy and loaded again comes back at
+    // the zoom it had.
+    const factor = this.zoom.factorFor(entry.artwork.id);
+    layers.forEach((layer) => layer.setZoom?.(factor));
     layers.forEach((layer) => entry.group.add(layer.object3D));
     entry.state = 'READY';
 
@@ -201,6 +218,14 @@ export class ArtworkManager {
 
     this.enforceMemoryPolicy();
     this.notify();
+  }
+
+  private applyZoom(artworkId: string, factor: number) {
+    this.entries.forEach((entry) => {
+      if (entry.artwork.id === artworkId) {
+        entry.layers.forEach((layer) => layer.setZoom?.(factor));
+      }
+    });
   }
 
   private getActiveEntry() {
