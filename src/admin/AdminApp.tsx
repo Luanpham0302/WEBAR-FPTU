@@ -9,7 +9,9 @@ import ArtworksSection from './sections/ArtworksSection';
 import CampaignsSection from './sections/CampaignsSection';
 import DashboardSection from './sections/DashboardSection';
 import MediaLibrarySection from './sections/MediaLibrarySection';
+import PackTester from './sections/PackTester';
 import ScannerSettingsSection from './sections/ScannerSettingsSection';
+import TargetPacksSection from './sections/TargetPacksSection';
 import './admin.css';
 
 const NAV: { id: SectionId; label: string }[] = [
@@ -17,11 +19,12 @@ const NAV: { id: SectionId; label: string }[] = [
   { id: 'campaigns', label: 'Campaigns' },
   { id: 'artworks', label: 'Artworks' },
   { id: 'media', label: 'Media Library' },
+  { id: 'packs', label: 'Target Packs' },
   { id: 'scanner', label: 'Scanner Settings' },
 ];
 
 // Shown disabled so the shape of the CMS is visible before they exist.
-const COMING_NEXT = ['Target Packs', 'Releases'];
+const COMING_NEXT = ['Releases'];
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -186,10 +189,29 @@ export default function AdminApp() {
         );
       case 'media':
         return <MediaLibrarySection role={role} />;
+      case 'packs':
+        return (
+          <TargetPacksSection
+            role={role}
+            campaignId={route.param}
+            navigate={navigate}
+          />
+        );
       default:
         return <DashboardSection role={role} navigate={navigate} />;
     }
   };
+
+  // The tester takes the whole screen for the camera. It needs a CMS role:
+  // the pack and its artworks are read through row level security.
+  if (route.section === 'test' && role && route.param) {
+    return (
+      <PackTester
+        packId={route.param}
+        onExit={(campaignId) => navigate('packs', campaignId ?? undefined)}
+      />
+    );
+  }
 
   return (
     <div className="admin">

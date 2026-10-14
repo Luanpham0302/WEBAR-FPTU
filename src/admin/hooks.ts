@@ -6,6 +6,9 @@ export type SectionId =
   | 'campaigns'
   | 'artworks'
   | 'media'
+  | 'packs'
+  // Full-screen pack tester; not in the navigation.
+  | 'test'
   | 'scanner';
 
 const SECTIONS: readonly string[] = [
@@ -13,6 +16,8 @@ const SECTIONS: readonly string[] = [
   'campaigns',
   'artworks',
   'media',
+  'packs',
+  'test',
   'scanner',
 ];
 

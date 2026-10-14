@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import {
+  clearArtworkTrigger,
   createArtwork,
   duplicateArtwork,
   listArtworks,
@@ -9,10 +10,10 @@ import {
   type ArtworkInput,
 } from '../../cms/artworkService';
 import { listCampaigns } from '../../cms/campaignService';
-import {
-  TRIGGER_MIN_RECOMMENDED_SIDE,
-  uploadTriggerMedia,
-} from '../../cms/mediaService';
+import { uploadTriggerMedia } from '../../cms/mediaService';
+import { gradeFeatureCount } from '../../cms/targetPack';
+import { loadLatestQuality } from '../../cms/targetPackService';
+import { checkTriggerImage } from '../../cms/triggerRules';
 import type { ArtworkStatus, ArtworkWithTrigger } from '../../cms/types';
 import { formatBytes, hasRole, type CmsRole } from '../../cms/validation';
 import { Badge, Field, MediaPreview, Notice } from '../components';
@@ -117,16 +118,28 @@ function ArtworkForm({
   );
 }
 
+// How this trigger scored in the newest verified target pack, if it is in it.
+type TriggerQuality = {
+  version: number;
+  featureCount: number | null;
+};
+
 function TriggerPanel({
   artwork,
   canEdit,
   busy,
+  quality,
   onUpload,
+  onRemove,
+  onOpenPacks,
 }: {
   artwork: ArtworkWithTrigger;
   canEdit: boolean;
   busy: boolean;
+  quality: TriggerQuality | null;
   onUpload: (file: File) => void;
+  onRemove: () => void;
+  onOpenPacks: () => void;
 }) {
   const { trigger } = artwork;
 
@@ -141,10 +154,16 @@ function TriggerPanel({
     }
   };
 
-  const isSmall =
-    trigger !== null &&
-    Math.min(artwork.trigger_width ?? 0, artwork.trigger_height ?? 0) <
-      TRIGGER_MIN_RECOMMENDED_SIDE;
+  // The same rules the upload enforces, shown for the stored image.
+  const issues = trigger
+    ? checkTriggerImage({
+        mimeType: trigger.mime_type,
+        width: artwork.trigger_width ?? 0,
+        height: artwork.trigger_height ?? 0,
+        fileSize: trigger.file_size,
+      })
+    : [];
+  const grade = quality ? gradeFeatureCount(quality.featureCount) : null;
 
   return (
     <div className="admin-form">
@@ -163,11 +182,34 @@ function TriggerPanel({
       ) : (
         <p className="admin-small admin-muted">No trigger image yet.</p>
       )}
-      {isSmall && (
-        <Notice kind="warn">
-          This image is small. Tracking works best when the shorter side is at
-          least {TRIGGER_MIN_RECOMMENDED_SIDE} px.
+      {issues.map((issue) => (
+        <Notice key={issue.code} kind={issue.level === 'error' ? 'error' : 'warn'}>
+          {issue.message}
         </Notice>
+      ))}
+      {trigger && (
+        <div className="admin-row admin-small">
+          <span>Tracking quality:</span>
+          {quality && grade ? (
+            <>
+              <Badge label={grade} />
+              <span className="admin-muted">
+                {quality.featureCount} features in target pack v{quality.version}
+              </span>
+            </>
+          ) : (
+            <span className="admin-muted">
+              not measured yet. It is measured when a target pack is compiled.
+            </span>
+          )}
+          <button
+            className="admin-button admin-button--small"
+            type="button"
+            onClick={onOpenPacks}
+          >
+            Target Packs
+          </button>
+        </div>
       )}
       {canEdit && (
         <Field label={trigger ? 'Replace with a new PNG or JPEG' : 'Upload a PNG or JPEG'}>
@@ -179,10 +221,22 @@ function TriggerPanel({
           />
         </Field>
       )}
+      {canEdit && trigger && (
+        <div className="admin-row">
+          <button
+            className="admin-button admin-button--small"
+            type="button"
+            disabled={busy}
+            onClick={onRemove}
+          >
+            Remove trigger
+          </button>
+        </div>
+      )}
       <p className="admin-small admin-muted">
-        Trigger images are stored privately. Uploading one does not change the
-        live scanner: it only takes effect after a target pack is compiled and
-        a release is published.
+        Trigger images are stored privately. Changing one does not change the
+        live scanner or any target pack that was already compiled: it only
+        affects the next pack you compile.
       </p>
     </div>
   );
@@ -217,6 +271,29 @@ export default function ArtworksSection({
     activeCampaignId ?? 'none',
   );
 
+  // Optional extra: the section works without it (for example before the
+  // first pack exists), so a failure here is not shown as an error.
+  const latestQuality = useAsync(
+    () =>
+      activeCampaignId
+        ? loadLatestQuality(activeCampaignId).catch(() => null)
+        : Promise.resolve(null),
+    activeCampaignId ?? 'none',
+  );
+
+  const qualityOf = (artwork: ArtworkWithTrigger): TriggerQuality | null => {
+    const latest = latestQuality.data;
+
+    if (!latest || !artwork.trigger_sha256 || !latest.bySha256.has(artwork.trigger_sha256)) {
+      return null;
+    }
+
+    return {
+      version: latest.version,
+      featureCount: latest.bySha256.get(artwork.trigger_sha256) ?? null,
+    };
+  };
+
   const list = artworks.data ?? [];
   const visible = list.filter(
     (artwork) => showArchived || artwork.status !== 'archived',
@@ -250,6 +327,24 @@ export default function ArtworksSection({
       artworks.reload();
       return 'Trigger image stored.';
     }, `Uploading ${file.name}...`);
+
+  const removeTrigger = (artwork: ArtworkWithTrigger) => {
+    if (
+      !window.confirm(
+        artwork.status === 'ready'
+          ? `Remove the trigger of "${artwork.name}"? The artwork goes back to Draft and is left out of the next target pack.`
+          : `Remove the trigger of "${artwork.name}"?`,
+      )
+    ) {
+      return;
+    }
+
+    void run(async () => {
+      await clearArtworkTrigger(artwork);
+      artworks.reload();
+      return 'Trigger removed. Existing target packs are unchanged.';
+    });
+  };
 
   const duplicate = (artwork: ArtworkWithTrigger) =>
     void run(async () => {
@@ -368,7 +463,10 @@ export default function ArtworksSection({
               artwork={editing}
               canEdit={canEdit}
               busy={busy}
+              quality={qualityOf(editing)}
               onUpload={(file) => uploadTrigger(editing, file)}
+              onRemove={() => removeTrigger(editing)}
+              onOpenPacks={() => navigate('packs', editing.campaign_id)}
             />
           )}
         </div>

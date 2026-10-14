@@ -82,3 +82,18 @@ export function scannerKey(assetKey: string, sha256: string, extension: string) 
 
   return `scanner/${assetKey}/${sha256}.${extension}`;
 }
+
+// targets/{campaign-id}/v{n}/targets.mind
+//
+// The version comes from the database, which hands each one out once, so
+// this path is never reused. The server builds the same string when it
+// reserves the pack; this copy exists to check what it returned.
+export function targetPackKey(campaignId: string, version: number) {
+  assertSegment(campaignId, 'campaign id');
+
+  if (!Number.isInteger(version) || version < 1) {
+    throw new Error(`Invalid target pack version: ${version}`);
+  }
+
+  return `targets/${campaignId}/v${version}/targets.mind`;
+}

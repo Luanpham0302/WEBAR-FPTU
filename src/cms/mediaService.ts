@@ -9,13 +9,16 @@ import {
   type ObjectRef,
 } from './storage';
 import { extensionOf, mediaKey, triggerKey } from './storageKeys';
+import {
+  TRIGGER_RULES,
+  checkTriggerImage,
+  duplicateIssue,
+  findDuplicateTrigger,
+  hasBlockingIssue,
+} from './triggerRules';
 import type { LibraryMediaType, Media, MediaStatus, MediaType } from './types';
 
-export const TRIGGER_MIME_TYPES = ['image/png', 'image/jpeg'];
-
-// Below this the trigger still uploads, with a warning: MindAR finds few
-// features in small images.
-export const TRIGGER_MIN_RECOMMENDED_SIDE = 512;
+export const TRIGGER_MIME_TYPES: readonly string[] = TRIGGER_RULES.mimeTypes;
 
 export const mediaRef = (media: Media): ObjectRef => ({
   provider: media.storage_provider,
@@ -162,6 +165,43 @@ export async function uploadTriggerMedia(input: {
   }
 
   const facts = await inspectFile(file, 'image');
+
+  // Format, resolution and aspect ratio. Errors stop here, before anything
+  // is stored; warnings are shown by the editor from the stored facts.
+  const issues = checkTriggerImage({
+    mimeType: file.type,
+    width: facts.width ?? 0,
+    height: facts.height ?? 0,
+    fileSize: file.size,
+  });
+
+  // The same image on another artwork of this campaign. The database also
+  // refuses this, which covers two editors uploading at the same moment.
+  const { data: siblings, error: siblingsError } = await supabase
+    .from('artworks')
+    .select('id, name, status, trigger_sha256')
+    .eq('campaign_id', input.campaignId)
+    .eq('trigger_sha256', facts.sha256);
+
+  if (siblingsError) {
+    throw siblingsError;
+  }
+
+  const owner = findDuplicateTrigger(facts.sha256, input.artworkId, siblings);
+
+  if (owner) {
+    issues.push(duplicateIssue(owner.name));
+  }
+
+  if (hasBlockingIssue(issues)) {
+    throw new Error(
+      issues
+        .filter((issue) => issue.level === 'error')
+        .map((issue) => issue.message)
+        .join(' '),
+    );
+  }
+
   const key = triggerKey(
     input.campaignId,
     input.artworkId,

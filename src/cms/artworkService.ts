@@ -85,6 +85,26 @@ export async function setArtworkTrigger(artworkId: string, trigger: Media) {
   }
 }
 
+// Removes the trigger from the artwork. An artwork without a trigger cannot
+// be Ready, so it goes back to Draft. The stored image and every target pack
+// already compiled from it are untouched.
+export async function clearArtworkTrigger(artwork: Artwork) {
+  const { error } = await supabase
+    .from('artworks')
+    .update({
+      trigger_media_id: null,
+      trigger_width: null,
+      trigger_height: null,
+      trigger_sha256: null,
+      status: artwork.status === 'ready' ? 'draft' : artwork.status,
+    })
+    .eq('id', artwork.id);
+
+  if (error) {
+    throw error;
+  }
+}
+
 // Copies the artwork and its layers as a new draft at the end of the list.
 // The trigger image is NOT copied: two artworks with the same trigger in one
 // campaign cannot be told apart by MindAR.

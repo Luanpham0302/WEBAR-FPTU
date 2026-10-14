@@ -18,6 +18,11 @@ export function describeError(error: unknown, fallback = 'Something went wrong.'
   if (typeof error === 'object' && error !== null) {
     const { code, message } = error as Failure;
 
+    // The database refusing two artworks with the same trigger image.
+    if (message?.includes('artworks_campaign_trigger_unique_idx')) {
+      return 'Another artwork in this campaign already uses this exact trigger image.';
+    }
+
     if (code && MESSAGE_BY_CODE[code]) {
       return MESSAGE_BY_CODE[code];
     }

@@ -34,3 +34,18 @@ declare module 'mind-ar/dist/mindar-image-three.prod.js' {
     stop(): void;
   }
 }
+
+// The MindAR image-target compiler. Same MindAR build as the scanner runtime.
+declare module 'mind-ar/dist/mindar-image.prod.js' {
+  export class Compiler {
+    // The position of an image in `images` becomes its targetIndex.
+    compileImageTargets(
+      images: HTMLImageElement[],
+      onProgress: (percent: number) => void,
+    ): Promise<unknown[]>;
+    // The contents of a .mind file.
+    exportData(): Uint8Array;
+    // Parses a .mind file; returns its target list.
+    importData(buffer: ArrayBuffer | Uint8Array): unknown[];
+  }
+}

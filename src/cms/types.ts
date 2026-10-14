@@ -68,3 +68,61 @@ export type Artwork = {
 export type ArtworkWithTrigger = Artwork & {
   trigger: Media | null;
 };
+
+export type TargetPackStatus = 'uploaded' | 'verified' | 'failed' | 'retired';
+
+export type TargetPack = {
+  id: string;
+  campaign_id: string;
+  version: number;
+  storage_provider: string;
+  bucket: string;
+  storage_key: string;
+  sha256: string;
+  file_size: number;
+  target_count: number;
+  source_hash: string;
+  compiler_version: string;
+  status: TargetPackStatus;
+  created_at: string;
+  created_by: string | null;
+};
+
+// One row of the authoritative targetIndex mapping of a pack.
+export type TargetPackItem = {
+  pack_id: string;
+  target_index: number;
+  artwork_id: string;
+  trigger_media_id: string;
+  trigger_sha256: string;
+  width: number;
+  height: number;
+  feature_count: number | null;
+};
+
+export type TargetPackItemWithArtwork = TargetPackItem & {
+  artwork: { id: string; name: string } | null;
+};
+
+export type ArtworkLayer = {
+  id: string;
+  artwork_id: string;
+  media_id: string;
+  layer_type: 'VIDEO' | 'MODEL_3D';
+  position_x: number;
+  position_y: number;
+  position_z: number;
+  scale: number;
+  rotation_x: number;
+  rotation_y: number;
+  rotation_z: number;
+  fit: 'target' | 'video' | null;
+  loop: boolean;
+  muted: boolean;
+  enabled: boolean;
+  sort_order: number;
+};
+
+export type ArtworkLayerWithMedia = ArtworkLayer & {
+  media: Media | null;
+};

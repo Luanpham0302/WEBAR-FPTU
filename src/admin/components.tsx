@@ -31,6 +31,14 @@ const BADGE_TONE: Record<string, string> = {
   viewer: 'info',
   draft: 'warn',
   pending: 'warn',
+  verified: 'good',
+  ok: 'good',
+  good: 'good',
+  fair: 'warn',
+  uploading: 'warn',
+  poor: 'bad',
+  failed: 'bad',
+  interrupted: 'bad',
 };
 
 export function Badge({ label }: { label: string }) {

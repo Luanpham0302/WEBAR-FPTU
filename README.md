@@ -70,7 +70,7 @@ Video 04, Video 05 and the GLB in `public/poc/media/` are development placeholde
 
 ## Admin CMS (Phase 2A)
 
-`/admin` has five sections: Dashboard, Campaigns, Artworks, Media Library and Scanner Settings. Campaigns, artworks and media are working copies; the scanner still runs the built-in profiles until target packs and releases exist.
+`/admin` has six sections: Dashboard, Campaigns, Artworks, Media Library, Target Packs and Scanner Settings. Campaigns, artworks and media are working copies; the scanner still runs the built-in profiles until target packs and releases exist.
 
 - **Database.** SQL lives in `supabase/migrations/` and is applied by hand, in file-name order. Files 1-3 only add new objects. File 4 (`cms_hardening`) restricts the existing `ar_content` table and `ar-assets` bucket to CMS roles; create the first Admin and deploy the frontend before applying it. `supabase/manual/` holds the audit and preview queries, the first-Admin script and a rollback for file 4.
 - **Roles.** `viewer` reads, `editor` edits working copies, `admin` also publishes. A user without a row in `user_roles` has no CMS access. Row level security enforces this; the UI only hides buttons.
@@ -78,12 +78,35 @@ Video 04, Video 05 and the GLB in `public/poc/media/` are development placeholde
 
 | Bucket | Access | Path |
 | --- | --- | --- |
-| `ar-media` | public | `media/{media-id}/{sha256}.{ext}` |
+| `ar-media` | public | `media/{media-id}/{sha256}.{ext}` and `targets/{campaign-id}/v{n}/targets.mind` |
 | `ar-sources` | private | `triggers/{campaign-id}/{artwork-id}/{sha256}.{ext}` |
 | `ar-assets` | public, existing | `scanner/{asset-key}/{sha256}.{ext}` |
 
 - **Scanner Settings.** An upload goes to a new file and only changes the preview. The live scanner changes when Publish writes the new URL to `ar_content`.
 - **Release manifest.** `src/cms/manifest.ts` defines the immutable snapshot a release stores, and converts it to the runtime `ARProfile`. The scanner does not use it yet.
+
+## Target packs (Phase 2B)
+
+A target pack is one compiled MindAR `.mind` file for a campaign, built in the Admin under Target Packs. Building a pack never changes what visitors see: nothing is live until a release is published (Phase 2C).
+
+1. Each artwork gets a private trigger image in the Artwork editor. The upload checks format, resolution, aspect ratio and duplicates.
+2. Target Packs lists every Ready artwork in compile order. The row number is the `targetIndex`.
+3. Compile downloads each private trigger, checks its SHA-256, and compiles with the same MindAR 1.2.5 build the scanner runs.
+4. The result is read back with MindAR's own parser and checked target by target: count, index and pixel size. Tracking quality is graded per target.
+5. Save reserves the next version in the database, together with the full `targetIndex` mapping in `target_pack_items`, then uploads to `ar-media/targets/{campaign-id}/v{n}/targets.mind`, downloads it again and compares the hash. Only then is the pack marked verified.
+6. Test opens a signed-in camera screen for that pack. It is separate from the public scanner.
+
+Packs are numbered and never overwritten. A pack whose upload did not finish is marked failed or shown as interrupted and can never be used. `target_pack_items` is the only source of target indexes after a compile.
+
+A pack always contains every Ready artwork of its campaign; the database refuses a pack that leaves one out or includes one that is not Ready. To leave an artwork out, set it to Draft.
+
+**What "verified" means.** The database marks a pack verified when it was reserved through the validated function, its mapping is complete, and a file is stored at the reserved path with the reserved size. The database cannot read the file, so it does not check the `.mind` contents or the SHA-256; that comparison runs in the compiling browser. Verified is therefore not an approval to publish. See `docs/phase-2c-requirements.md`.
+
+A pack can be at most 50 MB, which is the Supabase Storage upload limit of a default project and the maximum on the Free plan. The PoC pack with six targets is 5 MB. The limit lives in `cms_pack_max_bytes()` in the database and `MAX_PACK_BYTES` in `src/cms/targetPack.ts`; raise both together if the project limit is raised.
+
+Packs cannot be written directly through the API. Three database functions are the only way in: reserve, verify and set status. Pack rows and items are a permanent record, so a version number and its storage path are never reused. Apply `supabase/migrations/20261014090000_cms_target_packs.sql` by hand, with `supabase/manual/05_pre_target_packs.sql` before and `06_post_target_packs.sql` after; `07_rollback_target_packs.sql` undoes it.
+
+The dev-only `tools/compile-targets.html` still exists for the built-in PoC profile and is unchanged.
 
 ## Layers
 
