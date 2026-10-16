@@ -11,6 +11,7 @@ import DashboardSection from './sections/DashboardSection';
 import MediaLibrarySection from './sections/MediaLibrarySection';
 import PackTester from './sections/PackTester';
 import ScannerSettingsSection from './sections/ScannerSettingsSection';
+import ReleasesSection from './sections/ReleasesSection';
 import TargetPacksSection from './sections/TargetPacksSection';
 import './admin.css';
 
@@ -21,10 +22,8 @@ const NAV: { id: SectionId; label: string }[] = [
   { id: 'media', label: 'Media Library' },
   { id: 'packs', label: 'Target Packs' },
   { id: 'scanner', label: 'Scanner Settings' },
+  { id: 'releases', label: 'Releases' },
 ];
-
-// Shown disabled so the shape of the CMS is visible before they exist.
-const COMING_NEXT = ['Releases'];
 
 function LoginForm() {
   const [email, setEmail] = useState('');
@@ -189,6 +188,8 @@ export default function AdminApp() {
         );
       case 'media':
         return <MediaLibrarySection role={role} />;
+      case 'releases':
+        return <ReleasesSection role={role} campaignId={route.param} />;
       case 'packs':
         return (
           <TargetPacksSection
@@ -244,17 +245,7 @@ export default function AdminApp() {
               {item.label}
             </button>
           ))}
-          {COMING_NEXT.map((label) => (
-            <button
-              key={label}
-              className="admin-nav__item"
-              type="button"
-              disabled
-              title="Coming in a later phase"
-            >
-              {label}
-            </button>
-          ))}
+
         </nav>
       </header>
       <main className="admin-main">{renderSection()}</main>
