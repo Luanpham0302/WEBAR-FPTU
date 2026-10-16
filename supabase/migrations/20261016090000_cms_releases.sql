@@ -389,4 +389,25 @@ comment on function public.cms_publish_release(uuid) is
 comment on function public.cms_create_release(uuid,text) is
   'Builds an immutable release JSON manifest entirely in Postgres from pack items and working layers. Editor or Admin only.';
 
+-- Built-in postflight. Any privilege drift aborts the whole migration.
+do $$
+begin
+  if has_function_privilege('anon', 'public.cms_create_release(uuid,text)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.cms_publish_release(uuid)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.cms_get_preview_manifest(uuid)', 'EXECUTE')
+     or has_table_privilege('authenticated', 'public.cms_trusted_pack_checks', 'INSERT')
+     or has_table_privilege('authenticated', 'public.cms_trusted_pack_checks', 'UPDATE')
+     or not has_function_privilege('anon', 'public.cms_get_live_manifest()', 'EXECUTE') then
+    raise exception 'Phase 2C.2 security postflight failed; transaction rolled back.';
+  end if;
+  if exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'releases'
+      and cmd in ('INSERT','UPDATE','DELETE','ALL')
+  ) then
+    raise exception 'Release direct-write policies remain; transaction rolled back.';
+  end if;
+end
+$$;
+
 commit;
