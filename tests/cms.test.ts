@@ -182,6 +182,17 @@ test('validateManifest catches target index mistakes', () => {
   assert.match(validateManifest(outside).join('\n'), /outside the target pack/);
 });
 
+test('validateManifest requires a complete consecutive target index set', () => {
+  const shorter = manifest();
+  shorter.artworks.pop();
+  assert.match(validateManifest(shorter).join('\n'), /artworks count/);
+  assert.match(validateManifest(shorter).join('\n'), /missing targetIndex 1/);
+
+  const gap = manifest();
+  gap.artworks[1].targetIndex = 2;
+  assert.match(validateManifest(gap).join('\n'), /missing targetIndex 1/);
+});
+
 test('validateManifest rejects incomplete input', () => {
   assert.notDeepEqual(validateManifest(null), []);
   assert.notDeepEqual(validateManifest({ schemaVersion: 2 }), []);
