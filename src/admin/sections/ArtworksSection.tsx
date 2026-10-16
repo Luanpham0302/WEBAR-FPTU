@@ -18,6 +18,7 @@ import type { ArtworkStatus, ArtworkWithTrigger } from '../../cms/types';
 import { formatBytes, hasRole, type CmsRole } from '../../cms/validation';
 import { Badge, Field, MediaPreview, Notice } from '../components';
 import { useAction, useAsync, type Navigate } from '../hooks';
+import LayerEditor from './LayerEditor';
 
 function ArtworkForm({
   artwork,
@@ -467,6 +468,14 @@ export default function ArtworksSection({
               onUpload={(file) => uploadTrigger(editing, file)}
               onRemove={() => removeTrigger(editing)}
               onOpenPacks={() => navigate('packs', editing.campaign_id)}
+            />
+          )}
+          {editing && (
+            <LayerEditor
+              key={editing.id}
+              artworkId={editing.id}
+              canEdit={canEdit}
+              navigate={navigate}
             />
           )}
         </div>
