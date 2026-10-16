@@ -109,12 +109,14 @@ Deno.serve(async (req) => {
       const item = items[i];
       const target = object(decoded.dataList[i]);
       const image = object(target?.targetImage);
+      const matchingData = target?.matchingData;
+      const trackingData = target?.trackingData;
       if (item.target_index !== i || !image
           || !isPositiveInt(image.width) || !isPositiveInt(image.height)
           || image.width !== item.width || image.height !== item.height
-          || !Array.isArray(target?.matchingData)
-          || !Array.isArray(target?.trackingData)
-          || target.matchingData.length === 0 || target.trackingData.length === 0) {
+          || !Array.isArray(matchingData)
+          || !Array.isArray(trackingData)
+          || matchingData.length === 0 || trackingData.length === 0) {
         return reply(422, 'The embedded target at index ' + i + ' does not match its reserved mapping.');
       }
     }
