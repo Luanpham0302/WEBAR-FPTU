@@ -462,3 +462,39 @@
   background: rgba(13, 13, 26, 0.88);
   text-align: center;
 }
+
+/* ── Content Layers Editor (Phase 2C.1) ── */
+
+.admin-layer-editor {
+  border-top: 1px solid #2a2f3a;
+  padding-top: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.admin-layer-item { display: grid; gap: 10px; }
+
+.admin-layer-form {
+  padding: 14px;
+  border: 1px solid #353b48;
+  border-radius: 10px;
+  background: #12161d;
+}
+
+.admin-layer-axis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-layer-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .admin-layer-axis { grid-template-columns: 1fr; }
+}
