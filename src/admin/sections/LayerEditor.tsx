@@ -30,7 +30,12 @@ type LayerDraft = Omit<LayerInput, NumericField> & Record<NumericField, string>;
 
 function toDraft(input: LayerInput): LayerDraft {
   return {
-    ...input,
+    media_id: input.media_id,
+    layer_type: input.layer_type,
+    fit: input.fit,
+    loop: input.loop,
+    muted: input.muted,
+    enabled: input.enabled,
     position_x: String(input.position_x),
     position_y: String(input.position_y),
     position_z: String(input.position_z),
@@ -49,7 +54,12 @@ function toInput(draft: LayerDraft): LayerInput {
   };
 
   return {
-    ...draft,
+    media_id: draft.media_id,
+    layer_type: draft.layer_type,
+    fit: draft.fit,
+    loop: draft.loop,
+    muted: draft.muted,
+    enabled: draft.enabled,
     position_x: read('position_x'),
     position_y: read('position_y'),
     position_z: read('position_z'),
