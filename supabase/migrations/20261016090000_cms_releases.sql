@@ -238,7 +238,11 @@ begin
     v_layers := '[]'::jsonb;
 
     for v_layer in
-      select l.*, m.type as media_type, m.status as media_status,
+      select l.layer_type, l.media_id, l.scale,
+             l.position_x, l.position_y, l.position_z,
+             l.rotation_x, l.rotation_y, l.rotation_z,
+             l.fit, l."loop" as layer_loop, l.muted as layer_muted,
+             m.type as media_type, m.status as media_status,
              m.video_mode as media_video_mode,
              m.storage_provider as media_provider,
              m.bucket as media_bucket, m.storage_key as media_key
@@ -277,8 +281,8 @@ begin
         v_layer_json := v_layer_json || jsonb_build_object(
           'videoMode', v_layer.media_video_mode,
           'fit', v_layer.fit,
-          'loop', v_layer.loop,
-          'muted', v_layer.muted
+          'loop', v_layer.layer_loop,
+          'muted', v_layer.layer_muted
         );
       elsif v_layer.layer_type = 'MODEL_3D' then
         v_layer_json := v_layer_json || jsonb_build_object(
