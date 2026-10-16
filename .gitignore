@@ -23,3 +23,6 @@ source-code-only.zip
 
 # Local Netlify folder
 .netlify
+
+# Supabase CLI local state
+supabase/.temp/
