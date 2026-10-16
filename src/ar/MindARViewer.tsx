@@ -302,7 +302,9 @@ export default function MindARViewer({ profile: suppliedProfile }: { profile?: A
         setStatus('starting');
 
         const { config: remoteContent, status: remoteStatus } =
-          await loadARContent();
+          profile.id === 'poc'
+            ? { config: DEFAULT_AR_CONTENT, status: 'ready' as const }
+            : await loadARContent();
 
         if (!isMounted) {
           return;
