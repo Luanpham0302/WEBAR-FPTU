@@ -234,6 +234,17 @@ export function validateManifest(value: unknown): string[] {
     });
   });
 
+  if (targetCount > 0) {
+    if (value.artworks.length !== targetCount) {
+      problems.push('artworks count does not match targetPack.targetCount');
+    }
+    for (let index = 0; index < targetCount; index++) {
+      if (!seenIndexes.has(index)) {
+        problems.push(`missing targetIndex ${index}`);
+      }
+    }
+  }
+
   return problems;
 }
 
