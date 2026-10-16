@@ -15,7 +15,7 @@ import {
 } from '../config/arProfiles';
 import { ArtworkManager, type ActiveArtworkPhase } from './artworkManager';
 import { rotateMatchOrder } from './rotateMatchOrder';
-import type { Artwork } from './types';
+import type { ARProfile, Artwork } from './types';
 import { ZOOM_MAX, ZOOM_MIN, touchDistance, zoomPercent } from './zoom';
 
 // Zoom applies to video layers; an artwork with none shows no zoom controls.
@@ -97,7 +97,7 @@ async function assertAssetExists(src: string, label: string) {
   }
 }
 
-export default function MindARViewer() {
+export default function MindARViewer({ profile: suppliedProfile }: { profile?: ARProfile } = {}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const loadingVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -105,7 +105,7 @@ export default function MindARViewer() {
   // Zoom of the tracked artwork in percent; null when there is nothing to
   // zoom (no target tracked, or the tracked artwork has no video).
   const [zoomUi, setZoomUi] = useState<number | null>(null);
-  const [profile] = useState(() => selectProfile(window.location.search));
+  const [profile] = useState(() => suppliedProfile ?? selectProfile(window.location.search));
   const [soundOn, setSoundOn] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
   const [status, setStatus] = useState<ARStatus>('starting');
