@@ -1,0 +1,3 @@
+# The Edge Function checks user JWT and CMS role itself so OPTIONS works.
+[functions.cms-verify-pack]
+verify_jwt = false
