@@ -6,7 +6,13 @@ import {
   updateCampaign,
 } from '../../cms/campaignService';
 import type { Campaign } from '../../cms/types';
-import { hasRole, isValidSlug, slugify, type CmsRole } from '../../cms/validation';
+import {
+  campaignActions,
+  hasRole,
+  isValidSlug,
+  slugify,
+  type CmsRole,
+} from '../../cms/validation';
 import { Badge, Field, Notice } from '../components';
 import { useAction, useAsync, type Navigate } from '../hooks';
 
@@ -132,7 +138,9 @@ export default function CampaignsSection({
     if (
       status === 'archived' &&
       !window.confirm(
-        `Archive "${campaign.name}"? It is hidden, not deleted, and can be restored.`,
+        campaign.live_release_id !== null
+          ? `Archive "${campaign.name}"? It is live: the scanner stops showing its release until it is restored.`
+          : `Archive "${campaign.name}"? It is hidden, not deleted, and can be restored.`,
       )
     ) {
       return;
@@ -192,31 +200,40 @@ export default function CampaignsSection({
       )}
 
       <div className="admin-list">
-        {visible.map((campaign) => (
-          <div
-            key={campaign.id}
-            className={`admin-item${campaign.status === 'archived' ? ' admin-item--archived' : ''}`}
-          >
-            <div>
-              <div className="admin-item__title">
-                {campaign.name}
-                <Badge label={campaign.status} />
+        {visible.map((campaign) => {
+          const actions = campaignActions(role, campaign);
+          const live = campaign.live_release_id !== null;
+
+          return (
+            <div
+              key={campaign.id}
+              className={`admin-item${campaign.status === 'archived' ? ' admin-item--archived' : ''}`}
+            >
+              <div>
+                <div className="admin-item__title">
+                  {campaign.name}
+                  <Badge label={campaign.status} />
+                  {live && <Badge label="live" />}
+                </div>
+                <span className="admin-mono admin-muted">{campaign.slug}</span>
+                {campaign.description && (
+                  <p className="admin-small admin-muted">{campaign.description}</p>
+                )}
+                {actions.canEdit && !actions.canChangeStatus && (
+                  <p className="admin-small admin-muted">
+                    Live campaign: only an Admin can archive or restore it.
+                  </p>
+                )}
               </div>
-              <span className="admin-mono admin-muted">{campaign.slug}</span>
-              {campaign.description && (
-                <p className="admin-small admin-muted">{campaign.description}</p>
-              )}
-            </div>
-            <div className="admin-row">
-              <button
-                className="admin-button admin-button--small"
-                type="button"
-                onClick={() => navigate('artworks', campaign.id)}
-              >
-                Artworks
-              </button>
-              {canEdit && (
-                <>
+              <div className="admin-row">
+                <button
+                  className="admin-button admin-button--small"
+                  type="button"
+                  onClick={() => navigate('artworks', campaign.id)}
+                >
+                  Artworks
+                </button>
+                {actions.canEdit && (
                   <button
                     className="admin-button admin-button--small"
                     type="button"
@@ -225,6 +242,8 @@ export default function CampaignsSection({
                   >
                     Edit
                   </button>
+                )}
+                {actions.canChangeStatus && (
                   <button
                     className="admin-button admin-button--small"
                     type="button"
@@ -238,11 +257,11 @@ export default function CampaignsSection({
                   >
                     {campaign.status === 'active' ? 'Archive' : 'Restore'}
                   </button>
-                </>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {campaigns.data && visible.length === 0 && (
           <p className="admin-muted">No campaigns to show.</p>
         )}

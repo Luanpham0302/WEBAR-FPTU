@@ -30,6 +30,22 @@ export function hasRole(role: CmsRole | null, minimum: CmsRole): boolean {
   return role !== null && ROLE_RANK[role] >= ROLE_RANK[minimum];
 }
 
+// Which campaign buttons to offer. The database enforces the same rules
+// (row level security and cms_guard_campaign); hiding a button only spares
+// the user a refused request. The status of the live campaign decides what
+// every visitor sees, so archiving or restoring it is an Admin action.
+export function campaignActions(
+  role: CmsRole | null,
+  campaign: { live_release_id: string | null },
+): { canEdit: boolean; canChangeStatus: boolean } {
+  const canEdit = hasRole(role, 'editor');
+  return {
+    canEdit,
+    canChangeStatus:
+      canEdit && (campaign.live_release_id === null || hasRole(role, 'admin')),
+  };
+}
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} B`;

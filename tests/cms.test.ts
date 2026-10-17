@@ -14,6 +14,7 @@ import {
   triggerKey,
 } from '../src/cms/storageKeys.ts';
 import {
+  campaignActions,
   formatBytes,
   formatDuration,
   hasRole,
@@ -92,6 +93,20 @@ test('hasRole orders viewer < editor < admin and treats no role as no access', (
   assert.ok(!hasRole('editor', 'admin'));
   assert.ok(!hasRole('viewer', 'editor'));
   assert.ok(!hasRole(null, 'viewer'));
+});
+
+test('campaignActions: only an Admin is offered archive/restore of the live campaign', () => {
+  const live = { live_release_id: ID };
+  const notLive = { live_release_id: null };
+  const none = { canEdit: false, canChangeStatus: false };
+
+  assert.deepEqual(campaignActions('admin', live), { canEdit: true, canChangeStatus: true });
+  assert.deepEqual(campaignActions('admin', notLive), { canEdit: true, canChangeStatus: true });
+  assert.deepEqual(campaignActions('editor', live), { canEdit: true, canChangeStatus: false });
+  assert.deepEqual(campaignActions('editor', notLive), { canEdit: true, canChangeStatus: true });
+  assert.deepEqual(campaignActions('viewer', live), none);
+  assert.deepEqual(campaignActions('viewer', notLive), none);
+  assert.deepEqual(campaignActions(null, notLive), none);
 });
 
 test('formatters', () => {
