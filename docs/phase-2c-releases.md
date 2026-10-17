@@ -100,6 +100,36 @@ their reserved-path rule. Two RESTRICTIVE policies refuse any other name in
 Storage checks the type an upload declares, not its bytes. A media file is
 always served with an allowed type, but its contents are not verified.
 
+## Phase 2C.4 — HTTP security headers (M2, STAGING FIRST)
+
+`npm run build` writes `dist/_headers` (Netlify) from
+`src/security/securityHeaders.ts`. No Netlify build setting changes.
+
+- The CSP allows exactly the build's own Supabase project
+  (`VITE_SUPABASE_URL`), Google Fonts, and `blob:` for MindAR workers, GLB
+  textures and CMS file previews. No `unsafe-inline`, `unsafe-eval`, `data:`
+  or wildcard.
+- A known site must use its own project: the build fails if the Staging site
+  (`fptu-webar-staging`) is built against `rnqfnotdditgwtmyjdbs`, or the
+  Production site against `bkshtgufuhlkytsmproo`. Netlify sets `SITE_ID` and
+  `SITE_NAME`; `WEBAR_ENV=staging|production` can also be set explicitly.
+- `CSP_MODE` (Netlify environment variable, build time):
+  - unset or `report-only` (default): `Content-Security-Policy:
+    frame-ancestors 'none'` is enforced, the full policy is sent as
+    `Content-Security-Policy-Report-Only`. Violations appear in the browser
+    console only.
+  - `enforce`: the full policy is enforced, with `frame-ancestors 'none'` and
+    `upgrade-insecure-requests`. Set it only after the Staging tests pass;
+    nothing switches to it by itself.
+- Always: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: strict-origin-when-cross-origin`,
+  `Permissions-Policy: camera=(self), microphone=(), …`,
+  `Cross-Origin-Opener-Policy: same-origin`. HSTS is Netlify's own; no COEP.
+- Expected on every page, harmless: a `wasm-eval` report (Long.js tries a
+  tiny WebAssembly module and falls back to JavaScript) and a
+  `style-src-elem` report on the Scanner (MindAR's built-in CSS, which the
+  app's own CSS replaces).
+
 ## Expected role access
 
 - Viewer: list releases and open private previews, no verification/build/publish.
