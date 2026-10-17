@@ -1,13 +1,18 @@
-// Which files the Media Library may store in the public ar-media bucket.
-// Pure: no imports, so it also runs under `node --test`.
+// Which files the Media Library may store in the public ar-media bucket, and
+// which files Scanner Settings may store in the public ar-assets bucket.
+// Pure: no runtime imports, so it also runs under `node --test`.
 //
 // Must match 20261017120000_cms_storage_hardening.sql: the bucket allowlist
 // (AR_MEDIA_ALLOWED_MIME_TYPES), the bucket size limit (AR_MEDIA_MAX_BYTES)
 // and the path rule in cms_ar_media_path_kind() (the extensions below).
+// The scanner asset rules at the end must match
+// 20261017180000_cms_live_asset_protection.sql.
 //
 // The browser's File.type is a claim, not a check of the bytes. These rules
 // decide which type a stored file is served with; they do not prove what is
 // inside it.
+
+import type { ARContentConfig } from '../lib/contentService';
 
 export type LibraryFormat = {
   // Extension used in the storage key.
@@ -102,3 +107,31 @@ export const acceptFor = (kind: LibraryKind) =>
   (MEDIA_FORMATS[kind] as readonly LibraryFormat[])
     .flatMap((format) => [...format.names.map((name) => `.${name}`), format.mimeType])
     .join(',');
+
+// ---------------------------------------------- scanner assets (ar-assets)
+// Branding images, the loading animation and the three legacy videos. Same
+// formats and size limit as the Media Library, so no SVG, GIF or MOV.
+export const SCANNER_ASSET_KINDS = {
+  scannerBorder: 'IMAGE',
+  scannerTitle: 'IMAGE',
+  scannerFrame: 'IMAGE',
+  scannerBottom: 'IMAGE',
+  loadingAnimation: 'VIDEO',
+  animation01: 'VIDEO',
+  animation02: 'VIDEO',
+  animation03: 'VIDEO',
+} as const satisfies Record<keyof ARContentConfig, 'IMAGE' | 'VIDEO'>;
+
+export type ScannerAssetKey = keyof typeof SCANNER_ASSET_KINDS;
+
+export const AR_ASSETS_ALLOWED_MIME_TYPES: readonly string[] = [
+  ...MEDIA_FORMATS.IMAGE.map((format) => format.mimeType),
+  ...MEDIA_FORMATS.VIDEO.map((format) => format.mimeType),
+];
+
+export const AR_ASSETS_MAX_BYTES = AR_MEDIA_MAX_BYTES;
+
+export const scannerAssetFormatOf = (
+  key: ScannerAssetKey,
+  file: { name: string; type: string; size: number },
+) => libraryFormatOf(file, SCANNER_ASSET_KINDS[key]);

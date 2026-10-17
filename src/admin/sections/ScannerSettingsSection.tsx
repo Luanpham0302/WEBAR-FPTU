@@ -1,4 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
+import { SCANNER_ASSET_KINDS, acceptFor } from '../../cms/mediaRules';
 import {
   publishScannerSettings,
   uploadScannerAsset,
@@ -18,15 +19,24 @@ type FieldSpec = {
   video: boolean;
 };
 
+const fieldSpec = (key: keyof ARContentConfig, label: string): FieldSpec => ({
+  key,
+  label,
+  accept: acceptFor(SCANNER_ASSET_KINDS[key]),
+  video: SCANNER_ASSET_KINDS[key] === 'VIDEO',
+});
+
+// PNG, JPEG or WebP images and MP4 or WebM videos only (no SVG): the
+// ar-assets bucket refuses anything else.
 const FIELDS: FieldSpec[] = [
-  { key: 'scannerBorder', label: 'Scanner Border', accept: 'image/*', video: false },
-  { key: 'scannerTitle', label: 'AR Scanner Title', accept: 'image/*', video: false },
-  { key: 'scannerFrame', label: 'Scanner Frame', accept: 'image/*', video: false },
-  { key: 'scannerBottom', label: 'Bottom Decoration', accept: 'image/*', video: false },
-  { key: 'loadingAnimation', label: 'Loading Animation', accept: 'video/*', video: true },
-  { key: 'animation01', label: 'AR Video 01', accept: 'video/*', video: true },
-  { key: 'animation02', label: 'AR Video 02', accept: 'video/*', video: true },
-  { key: 'animation03', label: 'AR Video 03', accept: 'video/*', video: true },
+  fieldSpec('scannerBorder', 'Scanner Border'),
+  fieldSpec('scannerTitle', 'AR Scanner Title'),
+  fieldSpec('scannerFrame', 'Scanner Frame'),
+  fieldSpec('scannerBottom', 'Bottom Decoration'),
+  fieldSpec('loadingAnimation', 'Loading Animation'),
+  fieldSpec('animation01', 'AR Video 01'),
+  fieldSpec('animation02', 'AR Video 02'),
+  fieldSpec('animation03', 'AR Video 03'),
 ];
 
 // Branding assets and the three legacy videos.

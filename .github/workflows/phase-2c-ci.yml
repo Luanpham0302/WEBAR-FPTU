@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [phase-2c-content-layers]
 
+# The job only reads the repository.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest

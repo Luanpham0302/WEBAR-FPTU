@@ -130,6 +130,36 @@ always served with an allowed type, but its contents are not verified.
   `style-src-elem` report on the Scanner (MindAR's built-in CSS, which the
   app's own CSS replaces).
 
+## Phase 2C.4 — live asset protection (M3, STAGING FIRST)
+
+`supabase/migrations/20261017180000_cms_live_asset_protection.sql`:
+
+- No object named in any release manifest (preview, published or
+  superseded) can be deleted, moved or changed through the API, not even by
+  an Admin. Media files used only by working layers, and failed pack files,
+  can still be cleaned up.
+- A media row named by a release cannot be deleted; archive it instead.
+- `ar-assets` accepts only PNG, JPEG, WebP, MP4 and WebM, at most 50 MB, at
+  `scanner/{asset}/{sha256}.{ext}`. Scanner Settings applies the same rules
+  (no SVG). Existing files, including the legacy `live/` files, are not
+  changed.
+- A scanner asset that `ar_content` points at cannot be deleted.
+- The service role (Dashboard, SQL editor) bypasses these guards: delete
+  release files only after checking `public.cms_is_released_object(bucket, name)`.
+
+1. Run the migration in one session (psql, or the whole file at once in the
+   SQL Editor). Its NOTICEs print the previous `ar-assets` settings, confirm
+   the live release's files are protected, and count legacy files the new
+   rules would refuse (they are not changed).
+2. Run `supabase/tests/live_asset_protection.test.sql` with psql in one
+   session. It always ends in `ROLLBACK`. Expect `ALL 29 CHECKS PASSED`.
+   Then re-run `storage_hardening.test.sql` (28) and
+   `live_campaign_guard.test.sql` (25).
+
+The public scanner now fails closed on any problem with the published
+manifest; only a failure to reach Supabase, or no published release, falls
+back to the legacy scanner (`src/cms/scannerSource.ts`).
+
 ## Expected role access
 
 - Viewer: list releases and open private previews, no verification/build/publish.
