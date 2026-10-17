@@ -61,11 +61,30 @@ the file; the compiler version is also enforced using pack metadata.
    edit to test preview and rolling back to the earlier superseded version.
 7. Confirm `/?profile=poc` still works independently of the CMS.
 
+## Phase 2C.3 — live campaign status fix (H1, STAGING ONLY)
+
+Before this fix an Editor could archive the live campaign through the REST
+API; `cms_get_live_manifest()` then returned nothing and the scanner fell
+back to the legacy content without any publish or rollback.
+`supabase/migrations/20261017090000_cms_guard_live_campaign.sql` replaces
+only the `cms_guard_campaign()` trigger function: changing the status of a
+campaign that has a live release now needs an Admin, and the live pointer can
+only be set on an active campaign. No policy, grant or row is changed.
+
+1. Run the whole migration in the Staging SQL Editor. It is transactional,
+   checks its prerequisites and postflight, and is safe to re-run. A WARNING
+   means a live campaign is already archived; review it with an Admin.
+2. Run `supabase/tests/live_campaign_guard.test.sql` in the same editor. It
+   creates its own users, campaigns and releases, publishes and rolls back,
+   and always ends in `ROLLBACK`. Expect `ALL 25 CHECKS PASSED`.
+
 ## Expected role access
 
 - Viewer: list releases and open private previews, no verification/build/publish.
 - Editor: verify stored target packs, create release snapshots, private preview.
-- Admin: everything Editor can do plus publish and rollback.
+  Edits campaigns, but cannot change the status of the live campaign.
+- Admin: everything Editor can do plus publish and rollback, and archive or
+  reactivate the live campaign.
 - Anonymous: read only the currently published manifest; cannot read
   unpublished releases, preview tokens or the trusted attestation table.
 
