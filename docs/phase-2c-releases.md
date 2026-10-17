@@ -78,6 +78,28 @@ only be set on an active campaign. No policy, grant or row is changed.
    creates its own users, campaigns and releases, publishes and rolls back,
    and always ends in `ROLLBACK`. Expect `ALL 25 CHECKS PASSED`.
 
+## Phase 2C.4 — ar-media storage hardening (M1, STAGING ONLY)
+
+`supabase/migrations/20261017120000_cms_storage_hardening.sql` limits the
+public `ar-media` bucket to 50 MB and to `video/mp4`, `video/webm`,
+`model/gltf-binary`, `image/png`, `image/jpeg`, `image/webp` and
+`application/octet-stream` (target packs). Media uploads must use the path
+`media/{uuid}/{sha256}.{mp4|webm|glb|png|jpg|webp}`; target pack uploads keep
+their reserved-path rule. Two RESTRICTIVE policies refuse any other name in
+`ar-media`. Stored files, `ar-assets` and `ar-sources` are not changed.
+
+1. Run the whole migration in the Staging SQL Editor. NOTICEs list existing
+   objects the new rules would refuse; they are reported, never changed.
+2. Run `supabase/tests/storage_hardening.test.sql`. It inserts metadata rows
+   only, uploads no file and always ends in `ROLLBACK`. Expect
+   `ALL 28 CHECKS PASSED`. A temporary test policy locks `storage.objects`
+   for the moment the script runs, so run it when nobody is uploading.
+3. The MIME allowlist and size limit are enforced by the Storage API, not by
+   SQL: test them with real uploads from `/admin` (see the M1 report).
+
+Storage checks the type an upload declares, not its bytes. A media file is
+always served with an allowed type, but its contents are not verified.
+
 ## Expected role access
 
 - Viewer: list releases and open private previews, no verification/build/publish.

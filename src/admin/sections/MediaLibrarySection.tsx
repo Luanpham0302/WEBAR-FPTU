@@ -6,6 +6,7 @@ import {
   updateMedia,
   uploadLibraryMedia,
 } from '../../cms/mediaService';
+import { acceptFor } from '../../cms/mediaRules';
 import type { LibraryMediaType, Media, MediaType } from '../../cms/types';
 import {
   formatBytes,
@@ -24,9 +25,9 @@ const TYPE_LABEL: Record<MediaType, string> = {
 };
 
 const ACCEPT: Record<LibraryMediaType, string> = {
-  VIDEO: 'video/*',
-  MODEL_3D: '.glb,model/gltf-binary',
-  IMAGE: 'image/*',
+  VIDEO: acceptFor('VIDEO'),
+  MODEL_3D: acceptFor('MODEL_3D'),
+  IMAGE: acceptFor('IMAGE'),
 };
 
 const FILTERS: (MediaType | 'ALL')[] = [

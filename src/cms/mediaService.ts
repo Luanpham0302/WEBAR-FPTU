@@ -1,6 +1,7 @@
 import type { VideoMode } from '../ar/types';
 import { supabase } from '../lib/supabase';
 import { inspectFile } from './fileInspect';
+import { libraryFormatOf } from './mediaRules';
 import {
   ACTIVE_PROVIDER,
   BUCKETS,
@@ -54,26 +55,15 @@ export async function listMedia(options: {
 
 // Rejects a file the runtime could not use for this media type.
 export function checkFileForType(file: File, type: MediaType): string | null {
-  const extension = extensionOf(file.name, file.type);
-
-  switch (type) {
-    case 'VIDEO':
-      return file.type.startsWith('video/')
-        ? null
-        : 'Choose a video file (MP4 works on every phone).';
-    case 'MODEL_3D':
-      return extension === 'glb' ? null : 'Choose a .glb model file.';
-    case 'IMAGE':
-      return file.type.startsWith('image/') ? null : 'Choose an image file.';
-    case 'TRIGGER':
-      return TRIGGER_MIME_TYPES.includes(file.type)
-        ? null
-        : 'A trigger image must be a PNG or JPEG file.';
+  if (type === 'TRIGGER') {
+    return TRIGGER_MIME_TYPES.includes(file.type)
+      ? null
+      : 'A trigger image must be a PNG or JPEG file.';
   }
-}
 
-const mimeTypeOf = (file: File, type: MediaType) =>
-  file.type || (type === 'MODEL_3D' ? 'model/gltf-binary' : 'application/octet-stream');
+  const result = libraryFormatOf(file, type);
+  return 'error' in result ? result.error : null;
+}
 
 const inspectKind = (type: MediaType) => {
   if (type === 'VIDEO') {
@@ -91,7 +81,12 @@ type NewMediaRow = Omit<Media, 'status' | 'created_at' | 'updated_at'>;
 async function storeAndRecord(row: NewMediaRow, file: File): Promise<Media> {
   const storage = getStorage(row.storage_provider);
 
-  const { alreadyExisted } = await storage.upload(row.bucket, row.storage_key, file, {
+  // supabase-js sends a Blob as multipart form data, and Storage records the
+  // Blob's own type rather than the contentType option. Relabel the bytes so
+  // the stored type is the row's type (a .glb often has an empty File.type).
+  const body = file.type === row.mime_type ? file : file.slice(0, file.size, row.mime_type);
+
+  const { alreadyExisted } = await storage.upload(row.bucket, row.storage_key, body, {
     contentType: row.mime_type,
     cacheControl: IMMUTABLE_CACHE_CONTROL,
   });
@@ -120,12 +115,13 @@ export async function uploadLibraryMedia(input: {
   videoMode: VideoMode;
 }): Promise<Media> {
   const { file, type } = input;
-  const problem = checkFileForType(file, type);
+  const checked = libraryFormatOf(file, type);
 
-  if (problem) {
-    throw new Error(problem);
+  if ('error' in checked) {
+    throw new Error(checked.error);
   }
 
+  const { format } = checked;
   const facts = await inspectFile(file, inspectKind(type));
   const id = crypto.randomUUID();
 
@@ -136,9 +132,9 @@ export async function uploadLibraryMedia(input: {
       type,
       storage_provider: ACTIVE_PROVIDER,
       bucket: BUCKETS.media,
-      storage_key: mediaKey(id, facts.sha256, extensionOf(file.name, file.type)),
+      storage_key: mediaKey(id, facts.sha256, format.extension),
       sha256: facts.sha256,
-      mime_type: mimeTypeOf(file, type),
+      mime_type: format.mimeType,
       file_size: file.size,
       width: facts.width,
       height: facts.height,
@@ -234,7 +230,7 @@ export async function uploadTriggerMedia(input: {
       bucket: BUCKETS.sources,
       storage_key: key,
       sha256: facts.sha256,
-      mime_type: mimeTypeOf(file, 'TRIGGER'),
+      mime_type: file.type,
       file_size: file.size,
       width: facts.width,
       height: facts.height,
